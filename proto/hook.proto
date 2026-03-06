@@ -1,0 +1,64 @@
+// Copied from https://github.com/tus/tusd/blob/main/pkg/hooks/grpc/proto/hook.proto
+// If this file gets changed, you must recompile the generate package in pkg/proto.
+// To do this, install the Go protobuf toolchain as mentioned in
+// https://grpc.io/docs/languages/go/quickstart/#prerequisites.
+// Then use following command from the repository's root to recompile it with gRPC support:
+//   protoc --go-grpc_out=./pkg/ --go_out=./pkg/ ./pkg/hooks/grpc/proto/hook.proto
+// In addition, it may be necessary to update the protobuf or gRPC dependencies as well.
+
+syntax = "proto3";
+package proto;
+
+option go_package = "hooks/grpc/proto";
+
+message HookRequest {
+	string type = 1;
+	Event event = 2;
+}
+
+message Event {
+	FileInfo upload = 1;
+	HTTPRequest httpRequest = 2;
+}
+
+message FileInfo {
+	string id = 1;
+	int64 size = 2;
+	bool sizeIsDeferred = 3;
+	int64 offset = 4;
+	map<string, string> metaData = 5;
+	bool isPartial = 6;
+	bool isFinal = 7;
+	repeated string partialUploads = 8;
+	map <string, string> storage = 9;
+}
+
+message FileInfoChanges {
+	string id = 1;
+	map <string, string> metaData = 2;
+	map <string, string> storage = 3;
+}
+
+message HTTPRequest {
+	string method = 1;
+	string uri = 2;
+	string remoteAddr = 3;
+	map <string, string> header = 4;
+}
+
+message HookResponse {
+	HTTPResponse httpResponse = 1;
+	bool rejectUpload = 2;
+	FileInfoChanges changeFileInfo = 4;
+	bool stopUpload = 3;
+}
+
+message HTTPResponse {
+	int64 statusCode = 1;
+	map <string, string> header = 2;
+	string body = 3;
+}
+
+service HookHandler {
+	rpc InvokeHook (HookRequest) returns (HookResponse) {}
+}

@@ -1,0 +1,86 @@
+// Settings file locations
+// Depending on your platform, the user settings file is located here:
+//   Windows %APPDATA%\Code\User\settings.json
+//   macOS $HOME/Library/Application\ Support/Code/User/settings.json
+//   Linux $HOME/.config/Code/User/settings.json
+{
+    //
+    // Basic Editing
+    //
+    // https://code.visualstudio.com/docs/editor/codebasics#_how-do-i-turn-on-word-wrap
+    "editor.wordWrap": "on",
+
+    //
+    // Copilot Next Edit Suggestions (Preview)
+    // https://code.visualstudio.com/updates/v1_97#_copilot-next-edit-suggestions-preview
+    //
+    "github.copilot.nextEditSuggestions.enabled": true,
+
+    //
+    // JSON/JSONC
+    //
+    "[json]": {
+        "editor.detectIndentation": true,
+        "editor.formatOnPaste": false,
+        "editor.formatOnSave": false,
+        "editor.formatOnType": false
+    },
+    "[jsonc]": {
+        "editor.detectIndentation": true,
+        "editor.formatOnPaste": false,
+        "editor.formatOnSave": false,
+        "editor.formatOnType": false
+    },
+
+    //
+    // Python
+    //
+    "files.exclude": {
+        "**/__pycache__": true,
+        "**/*.pyc": true,
+        "**/*.pyo": true,
+        "**/*.pyd": true,
+        "**/.pytest_cache": true,
+        "**/.Python": true
+    },
+    // If you want to debug pytest in VSCode, please select `Debug Tests` from the `Testing` tab
+    "python.testing.pytestEnabled": true,
+    //
+    // Pylance
+    //
+    "python.analysis.aiCodeActions": {
+        "implementAbstractClasses": true,
+        "generateSymbol": true,
+        "generateDocstring": true
+    },
+    "python.analysis.autoFormatStrings": true,
+    "python.analysis.autoSearchPaths": true,
+    "python.analysis.completeFunctionParens": true,
+    "python.analysis.diagnosticMode": "openFilesOnly",
+    "python.analysis.displayEnglishDiagnostics": true,
+    "python.analysis.enablePytestSupport": true,
+    // Paths of directories or files that should be included. If no paths are specified,
+    // Pylance defaults to the directory that contains workspace root.
+    // "python.analysis.include": ["src/**/*"],
+    "python.analysis.inlayHints.callArgumentNames": "all",
+    "python.analysis.inlayHints.functionReturnTypes": true,
+    "python.analysis.inlayHints.pytestParameters": true,
+    "python.analysis.inlayHints.variableTypes": true,
+    "python.analysis.languageServerMode": "full",
+    // https://code.visualstudio.com/docs/configure/themes#_editor-semantic-highlighting
+    "editor.semanticHighlighting.enabled": true,
+    "python.analysis.supportRestructuredText": true,
+    "python.analysis.typeCheckingMode": "strict",
+
+    //
+    // Ruff
+    //
+    // https://docs.astral.sh/ruff/editors/settings/#interpreter
+    "[python]": {
+        "editor.defaultFormatter": "charliermarsh.ruff",
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+            "source.organizeImports.ruff": "explicit"
+        }
+    }
+}

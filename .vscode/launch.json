@@ -1,0 +1,34 @@
+{
+    //
+    // Variable reference:
+    // https://code.visualstudio.com/docs/reference/variables-reference
+    //
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: Current File",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "cwd": "${fileDirname}",
+            // When omitted or set to true (the default), restricts debugging to user-written code only.
+            // Set to false to also enable debugging of standard library functions.
+            "justMyCode": false
+        },
+        {
+            "name": "tusd-bridge",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "tusd_bridge.server",
+            "console": "integratedTerminal",
+            // When omitted or set to true (the default), restricts debugging to user-written code only.
+            // Set to false to also enable debugging of standard library functions.
+            "justMyCode": false
+        }
+
+        //
+        // If you want to debug pytest in VSCode, please select `Debug Tests` from the `Testing` tab
+        //
+    ]
+}

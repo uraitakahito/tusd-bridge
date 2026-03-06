@@ -1,0 +1,35 @@
+name: Ruff
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'src/**'
+      - 'pyproject.toml'
+      - 'uv.lock'
+      - '.ruff.toml'
+      - '.github/workflows/ruff.yml'
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'pyproject.toml'
+      - 'uv.lock'
+      - '.ruff.toml'
+      - '.github/workflows/ruff.yml'
+
+jobs:
+  ruff:
+    name: Ruff lint and format check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v7
+
+      - run: uv sync --dev
+
+      - run: uv run ruff check --output-format=github
+
+      - run: uv run ruff format --check --diff
