@@ -1,6 +1,6 @@
 # tusd-bridge
 
-[tusd](https://github.com/tus/tusd)の[gRPC Hooks](https://tus.github.io/tusd/advanced-topics/hooks/#grpc-hooks)を受け取り、アップロードイベントをイベントストアに永続化するブリッジサーバー。
+[tusd](https://github.com/tus/tusd)の[gRPC Hooks](https://tus.github.io/tusd/advanced-topics/hooks/#grpc-hooks)から呼び出され、アップロードイベントやファイルのメタ情報をDBに保存します。
 ファイル一覧のREST APIとSSE (Server-Sent Events) によるリアルタイム通知を提供します。
 ファイルをアップロードするクライアントのサンプルは[hello-tus-js-client](https://github.com/uraitakahito/hello-tus-js-client)を想定しています。
 
