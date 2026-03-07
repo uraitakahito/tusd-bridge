@@ -4,7 +4,7 @@ import json
 from datetime import datetime, timezone
 
 from google.protobuf.json_format import MessageToDict
-from hook_pb2 import HookRequest  # pyright: ignore[reportMissingModuleSource]
+from hook_pb2 import HookRequest
 from sqlalchemy.orm import Session
 
 from tusd_bridge.models import UploadEvent, UploadSnapshot
@@ -20,13 +20,13 @@ HOOK_TYPE_TO_STATUS: dict[str, str] = {
 }
 
 
-def hook_request_to_json(request: HookRequest) -> str:  # pyright: ignore[reportMissingTypeStubs]
+def hook_request_to_json(request: HookRequest) -> str:
     """Serialize a HookRequest protobuf message to a JSON string."""
-    d: dict[str, object] = MessageToDict(request, preserving_proto_field_name=True)  # pyright: ignore[reportUnknownMemberType]
+    d: dict[str, object] = MessageToDict(request, preserving_proto_field_name=True)
     return json.dumps(d, ensure_ascii=False)
 
 
-def save_hook_event(session: Session, request: HookRequest) -> UploadEvent:  # pyright: ignore[reportMissingTypeStubs]
+def save_hook_event(session: Session, request: HookRequest) -> UploadEvent:
     """Persist a hook event and update the upload snapshot in one transaction."""
     upload = request.event.upload
     hook_type: str = request.type
