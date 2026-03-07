@@ -23,20 +23,20 @@ docker run -d --init --rm -p 8080:8080 --name tusd-container docker.io/tusprojec
 次のコマンドにより、gRPCサーバーとHTTP APIサーバーが同時に起動します。
 
 ```bash
-TUSD_BASE_URL=http://localhost:8080/files/ uv run inv run
+TUSD_DOWNLOAD_BASE_URL=http://localhost:8080/files/ uv run inv run
 ```
 
 or
 
 ```bash
-TUSD_BASE_URL=http://localhost:8080/files/ uv run tusd-bridge
+TUSD_DOWNLOAD_BASE_URL=http://localhost:8080/files/ uv run tusd-bridge
 ```
 
 ### 環境変数
 
 | 環境変数 | 説明 | デフォルト値 |
 |---|---|---|
-| `TUSD_BASE_URL` | tusd の公開ベース URL (必須) | なし |
+| `TUSD_DOWNLOAD_BASE_URL` | エンドユーザーがブラウザからアクセスする tusd の公開ベース URL (必須) | なし |
 | `TUSD_BRIDGE_HOST` | バインドアドレス | `0.0.0.0` |
 | `TUSD_BRIDGE_GRPC_PORT` | gRPC リッスンポート | `8000` |
 | `TUSD_BRIDGE_HTTP_PORT` | HTTP リッスンポート | `8001` |
