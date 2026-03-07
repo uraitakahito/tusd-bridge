@@ -31,10 +31,7 @@ def generate(c: Context) -> None:
 @task(pre=[generate])  # pyright: ignore[reportUntypedFunctionDecorator]
 def run(c: Context) -> None:
     """generate 後にサーバー起動."""
-    c.run(
-        "uv run tusd-bridge --tusd-base-url http://localhost:8080/files/",
-        pty=True,
-    )
+    c.run("uv run tusd-bridge", pty=True)
 
 
 @task

@@ -15,15 +15,16 @@ uv run inv db-upgrade
 ## サーバーの起動
 
 gRPC Hook サーバー (ポート 8000) と HTTP API サーバー (ポート 8001) が同時に起動します。
+環境変数 `TUSD_BASE_URL` の指定が必要です。
 
 ```bash
-uv run inv run
+TUSD_BASE_URL=http://localhost:8080/files/ uv run inv run
 ```
 
 or
 
 ```bash
-uv run tusd-bridge --host 0.0.0.0 --grpc-port 8000 --http-port 8001 --tusd-base-url http://localhost:8080/files/
+TUSD_BASE_URL=http://localhost:8080/files/ uv run tusd-bridge --host 0.0.0.0 --grpc-port 8000 --http-port 8001
 ```
 
 ## HTTP API

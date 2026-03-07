@@ -96,7 +96,9 @@ def main(
     grpc_port: int = typer.Option(8000, help="gRPC listen port."),
     http_port: int = typer.Option(8001, help="HTTP listen port."),
     tusd_base_url: str = typer.Option(
-        ..., help="tusd の公開ベース URL (例: http://localhost:8080/files/)"
+        ...,
+        envvar="TUSD_BASE_URL",
+        help="tusd の公開ベース URL (例: http://localhost:8080/files/)",
     ),
 ) -> None:
     asyncio.run(_serve(host, grpc_port, http_port, tusd_base_url))
