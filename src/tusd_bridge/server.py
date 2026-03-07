@@ -9,9 +9,8 @@ from hook_pb2 import HookRequest, HookResponse
 from sqlalchemy.orm import Session, sessionmaker
 
 from tusd_bridge.database import get_engine
-from tusd_bridge.event_bus import EventBus, SSEEvent
 from tusd_bridge.event_store import append_hook_event
-from tusd_bridge.http_app import create_http_app, view_to_dict
+from tusd_bridge.http_app import create_http_app
 
 logging.basicConfig(
     level=logging.INFO,
@@ -26,10 +25,8 @@ class HookHandler(HookHandlerBase):
     def __init__(
         self,
         session_factory: sessionmaker[Session],
-        event_bus: EventBus,
     ) -> None:
         self._session_factory = session_factory
-        self._event_bus = event_bus
 
     async def InvokeHook(self, stream: Stream[HookRequest, HookResponse]) -> None:
         request = await stream.recv_message()
@@ -53,14 +50,14 @@ class HookHandler(HookHandlerBase):
             dict(upload.storage),
         )
 
+        # DB への書き込みだけを行う。SSE クライアントへの配信は
+        # SSE エンドポイントが domain_events テーブルをポーリングして検出するため、
+        # ここでの明示的な通知 (EventBus publish) は不要。
         with self._session_factory() as session:
-            event, view = append_hook_event(session, request)
-            sse_event = SSEEvent(event_id=event.event_id, data=view_to_dict(view))
+            event, _view = append_hook_event(session, request)
             logger.info(
                 "Saved event_id=%d for stream_id=%s", event.event_id, event.stream_id
             )
-
-        await self._event_bus.publish(sse_event)
 
         await stream.send_message(HookResponse())
 
@@ -68,13 +65,12 @@ class HookHandler(HookHandlerBase):
 async def _serve(host: str, grpc_port: int, http_port: int) -> None:
     engine = get_engine()
     session_factory = sessionmaker(bind=engine)
-    event_bus = EventBus()
 
-    grpc_server = Server([HookHandler(session_factory, event_bus)])
+    grpc_server = Server([HookHandler(session_factory)])
     await grpc_server.start(host, grpc_port)
     logger.info("gRPC Hook server listening on %s:%d", host, grpc_port)
 
-    http_app = create_http_app(session_factory, event_bus)
+    http_app = create_http_app(session_factory)
     config = uvicorn.Config(http_app, host=host, port=http_port, log_level="info")
     http_server = uvicorn.Server(config)
     logger.info("HTTP server listening on %s:%d", host, http_port)

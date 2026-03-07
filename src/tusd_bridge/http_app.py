@@ -1,5 +1,6 @@
 """Starlette HTTP application for file listing REST API and SSE."""
 
+import asyncio
 import json
 from collections.abc import AsyncIterator
 from typing import Any
@@ -11,8 +12,9 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, StreamingResponse
 from starlette.routing import Route
 
-from tusd_bridge.event_bus import EventBus
 from tusd_bridge.models import DomainEvent, FileListView
+
+POLLING_INTERVAL_SECONDS = 0.5
 
 
 def view_to_dict(view: FileListView) -> dict[str, Any]:
@@ -78,32 +80,35 @@ def _create_list_files_endpoint(
 
 def _create_sse_endpoint(
     session_factory: sessionmaker[Session],
-    event_bus: EventBus,
 ) -> Any:
     async def sse_endpoint(request: Request) -> StreamingResponse:
         last_event_id_str = request.headers.get("Last-Event-ID", "0")
         last_event_id = int(last_event_id_str) if last_event_id_str.isdigit() else 0
 
         async def event_stream() -> AsyncIterator[str]:
-            # Replay missed events from the database
-            if last_event_id > 0:
-                stmt = (
-                    select(DomainEvent)
-                    .where(DomainEvent.event_id > last_event_id)
-                    .order_by(DomainEvent.event_id.asc())
-                )
+            # DB をイベントの Single Source of Truth として使用する。
+            # domain_events テーブルを定期的にポーリングすることで、
+            # インメモリ EventBus の subscribe タイミングに依存していた
+            # レースコンディション (DB クエリ完了〜subscribe 開始の間に
+            # publish されたイベントが欠落する問題) を構造的に排除する。
+            cursor = last_event_id
+            while True:
                 with session_factory() as session:
-                    missed_events = session.execute(stmt).scalars().all()
-                    for evt in missed_events:
+                    stmt = (
+                        select(DomainEvent)
+                        .where(DomainEvent.event_id > cursor)
+                        .order_by(DomainEvent.event_id.asc())
+                    )
+                    new_events = session.execute(stmt).scalars().all()
+                    for evt in new_events:
                         view = session.get(FileListView, evt.stream_id)
                         if view is not None:
                             yield _format_sse(evt.event_id, view_to_dict(view))
+                        cursor = evt.event_id
 
-            # Stream real-time events
-            async for sse_event in event_bus.subscribe():
                 if await request.is_disconnected():
                     break
-                yield _format_sse(sse_event.event_id, sse_event.data)
+                await asyncio.sleep(POLLING_INTERVAL_SECONDS)
 
         return StreamingResponse(
             event_stream(),
@@ -120,14 +125,13 @@ def _create_sse_endpoint(
 
 def create_http_app(
     session_factory: sessionmaker[Session],
-    event_bus: EventBus,
 ) -> Starlette:
     """Create the Starlette application with file listing routes and SSE."""
     routes = [
         Route("/files", _create_list_files_endpoint(session_factory), methods=["GET"]),
         Route(
             "/files/events",
-            _create_sse_endpoint(session_factory, event_bus),
+            _create_sse_endpoint(session_factory),
             methods=["GET"],
         ),
     ]
