@@ -17,11 +17,11 @@ from tusd_bridge.models import DomainEvent, FileListView
 POLLING_INTERVAL_SECONDS = 0.5
 
 
-def view_to_dict(view: FileListView, tusd_base_url: str) -> dict[str, Any]:
+def view_to_dict(view: FileListView, tusd_download_base_url: str) -> dict[str, Any]:
     return {
         "upload_id": view.upload_id,
         "display_status": view.display_status,
-        "download_url": f"{tusd_base_url}/{view.upload_id}",
+        "download_url": f"{tusd_download_base_url}/{view.upload_id}",
         "file_size": view.file_size,
         "file_offset": view.file_offset,
         "filename": view.filename,
@@ -43,7 +43,7 @@ def _format_sse(event_id: int, data: dict[str, Any]) -> str:
 
 def _create_list_files_endpoint(
     session_factory: sessionmaker[Session],
-    tusd_base_url: str,
+    tusd_download_base_url: str,
 ) -> Any:
     async def list_files(request: Request) -> JSONResponse:
         status_param = request.query_params.get("status")
@@ -65,7 +65,7 @@ def _create_list_files_endpoint(
         with session_factory() as session:
             rows = session.execute(stmt).scalars().all()
 
-        files = [view_to_dict(row, tusd_base_url) for row in rows]
+        files = [view_to_dict(row, tusd_download_base_url) for row in rows]
         last_event_id = max((row.last_event_id for row in rows), default=0)
         next_cursor = str(rows[-1].last_event_id) if len(rows) == limit else None
 
@@ -93,7 +93,7 @@ def _resolve_cursor(request: Request) -> int:
 
 def _create_sse_endpoint(
     session_factory: sessionmaker[Session],
-    tusd_base_url: str,
+    tusd_download_base_url: str,
 ) -> Any:
     async def sse_endpoint(request: Request) -> StreamingResponse:
         last_event_id = _resolve_cursor(request)
@@ -117,7 +117,7 @@ def _create_sse_endpoint(
                         view = session.get(FileListView, evt.stream_id)
                         if view is not None:
                             yield _format_sse(
-                                evt.event_id, view_to_dict(view, tusd_base_url)
+                                evt.event_id, view_to_dict(view, tusd_download_base_url)
                             )
                         cursor = evt.event_id
 
@@ -140,19 +140,19 @@ def _create_sse_endpoint(
 
 def create_http_app(
     session_factory: sessionmaker[Session],
-    tusd_base_url: str,
+    tusd_download_base_url: str,
 ) -> Starlette:
     """Create the Starlette application with file listing routes and SSE."""
-    base_url = tusd_base_url.rstrip("/")
+    download_base_url = tusd_download_base_url.rstrip("/")
     routes = [
         Route(
             "/files",
-            _create_list_files_endpoint(session_factory, base_url),
+            _create_list_files_endpoint(session_factory, download_base_url),
             methods=["GET"],
         ),
         Route(
             "/files/events",
-            _create_sse_endpoint(session_factory, base_url),
+            _create_sse_endpoint(session_factory, download_base_url),
             methods=["GET"],
         ),
     ]
