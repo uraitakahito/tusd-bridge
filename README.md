@@ -41,7 +41,18 @@ curl http://localhost:8001/files?status=uploaded,converting&limit=10
 curl -N http://localhost:8001/files/events
 ```
 
-再接続時に `Last-Event-ID` ヘッダを指定すると、未受信のイベントから再開できます。
+REST APIで取得した `last_event_id` を `cursor` クエリパラメータに指定すると、それ以降のイベントのみを受信できます。ページ読み込み時にREST APIでファイル一覧を取得した後、SSEでリアルタイム更新を受け取る使い方を想定しています。
+
+```bash
+# 1. REST APIでファイル一覧と last_event_id を取得
+curl http://localhost:8001/files
+# → { "files": [...], "last_event_id": 42, ... }
+
+# 2. SSEで last_event_id 以降のイベントのみ受信
+curl -N http://localhost:8001/files/events?cursor=42
+```
+
+再接続時はブラウザの `EventSource` APIが `Last-Event-ID` ヘッダを自動送信するため、イベントの欠落なく再開されます。`Last-Event-ID` ヘッダは `cursor` クエリパラメータより優先されます。
 
 ```bash
 curl -N -H "Last-Event-ID: 42" http://localhost:8001/files/events
