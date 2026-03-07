@@ -92,9 +92,15 @@ async def _serve(host: str, grpc_port: int, http_port: int, tusd_base_url: str) 
 
 @app.command()
 def main(
-    host: str = typer.Option("0.0.0.0", help="Bind address."),
-    grpc_port: int = typer.Option(8000, help="gRPC listen port."),
-    http_port: int = typer.Option(8001, help="HTTP listen port."),
+    host: str = typer.Option(
+        "0.0.0.0", envvar="TUSD_BRIDGE_HOST", help="Bind address."
+    ),
+    grpc_port: int = typer.Option(
+        8000, envvar="TUSD_BRIDGE_GRPC_PORT", help="gRPC listen port."
+    ),
+    http_port: int = typer.Option(
+        8001, envvar="TUSD_BRIDGE_HTTP_PORT", help="HTTP listen port."
+    ),
     tusd_base_url: str = typer.Option(
         ...,
         envvar="TUSD_BASE_URL",
