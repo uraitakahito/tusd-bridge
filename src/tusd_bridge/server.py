@@ -71,7 +71,7 @@ class HookHandler(HookHandlerBase):
         await stream.send_message(HookResponse())
 
 
-async def _serve(host: str, grpc_port: int, http_port: int) -> None:
+async def _serve(host: str, grpc_port: int, http_port: int, tusd_base_url: str) -> None:
     engine = get_engine()
     session_factory = sessionmaker(bind=engine)
 
@@ -79,7 +79,7 @@ async def _serve(host: str, grpc_port: int, http_port: int) -> None:
     await grpc_server.start(host, grpc_port)
     logger.info("gRPC Hook server listening on %s:%d", host, grpc_port)
 
-    http_app = create_http_app(session_factory)
+    http_app = create_http_app(session_factory, tusd_base_url)
     config = uvicorn.Config(http_app, host=host, port=http_port, log_level="info")
     http_server = uvicorn.Server(config)
     logger.info("HTTP server listening on %s:%d", host, http_port)
@@ -95,8 +95,11 @@ def main(
     host: str = typer.Option("0.0.0.0", help="Bind address."),
     grpc_port: int = typer.Option(8000, help="gRPC listen port."),
     http_port: int = typer.Option(8001, help="HTTP listen port."),
+    tusd_base_url: str = typer.Option(
+        ..., help="tusd の公開ベース URL (例: http://localhost:8080/files/)"
+    ),
 ) -> None:
-    asyncio.run(_serve(host, grpc_port, http_port))
+    asyncio.run(_serve(host, grpc_port, http_port, tusd_base_url))
 
 
 if __name__ == "__main__":

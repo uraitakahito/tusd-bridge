@@ -23,7 +23,7 @@ uv run inv run
 or
 
 ```bash
-uv run tusd-bridge --host 0.0.0.0 --grpc-port 8000 --http-port 8001
+uv run tusd-bridge --host 0.0.0.0 --grpc-port 8000 --http-port 8001 --tusd-base-url http://localhost:8080/files/
 ```
 
 ## HTTP API
