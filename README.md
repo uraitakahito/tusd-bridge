@@ -1,6 +1,7 @@
 # tusd-bridge
 
-[tusd](https://github.com/tus/tusd)の[gRPC Hooks](https://tus.github.io/tusd/advanced-topics/hooks/#grpc-hooks)を受け取り、アップロードファイルやイベント情報をコンソールに出力するスケルトンサーバー。
+[tusd](https://github.com/tus/tusd)の[gRPC Hooks](https://tus.github.io/tusd/advanced-topics/hooks/#grpc-hooks)を受け取り、アップロードイベントをイベントストアに永続化するブリッジサーバー。
+ファイル一覧のREST APIとSSE (Server-Sent Events) によるリアルタイム通知を提供します。
 ファイルをアップロードするクライアントのサンプルは[hello-tus-js-client](https://github.com/uraitakahito/hello-tus-js-client)を想定しています。
 
 ## セットアップ
@@ -11,7 +12,9 @@ uv run inv generate
 uv run inv db-upgrade
 ```
 
-## gRPC Hookサーバーの起動
+## サーバーの起動
+
+gRPC Hook サーバー (ポート 8000) と HTTP API サーバー (ポート 8001) が同時に起動します。
 
 ```bash
 uv run inv run
@@ -20,7 +23,28 @@ uv run inv run
 or
 
 ```bash
-uv run tusd-bridge --host 0.0.0.0 --port 8000
+uv run tusd-bridge --host 0.0.0.0 --grpc-port 8000 --http-port 8001
+```
+
+## HTTP API
+
+### ファイル一覧の取得
+
+```bash
+curl http://localhost:8001/files
+curl http://localhost:8001/files?status=uploaded,converting&limit=10
+```
+
+### SSE (Server-Sent Events) によるリアルタイム通知
+
+```bash
+curl -N http://localhost:8001/files/events
+```
+
+再接続時に `Last-Event-ID` ヘッダを指定すると、未受信のイベントから再開できます。
+
+```bash
+curl -N -H "Last-Event-ID: 42" http://localhost:8001/files/events
 ```
 
 ## データベースマイグレーション
@@ -61,9 +85,9 @@ If you develop inside a Docker container, run the following commands and read th
 % chmod 755 docker-entrypoint.sh
 ```
 
-ただし、gRPCサーバーのポートを公開する必要があるので、コンテナの起動コマンドは次のようになります。
+ただし、gRPCサーバーとHTTPサーバーのポートを公開する必要があるので、コンテナの起動コマンドは次のようになります。
 
 ```console
 % PROJECT=$(basename `pwd`) && docker image build -t $PROJECT-image . --build-arg user_id=`id -u` --build-arg group_id=`id -g`
-% docker container run -d --rm --init -p 8000:8000 -v /run/host-services/ssh-auth.sock:/run/host-services/ssh-auth.sock -e SSH_AUTH_SOCK=/run/host-services/ssh-auth.sock -e GH_TOKEN=$(gh auth token) --mount type=bind,src=`pwd`,dst=/app --mount type=volume,source=$PROJECT-zsh-history,target=/zsh-volume --name $PROJECT-container $PROJECT-image
+% docker container run -d --rm --init -p 8000:8000 -p 8001:8001 -v /run/host-services/ssh-auth.sock:/run/host-services/ssh-auth.sock -e SSH_AUTH_SOCK=/run/host-services/ssh-auth.sock -e GH_TOKEN=$(gh auth token) --mount type=bind,src=`pwd`,dst=/app --mount type=volume,source=$PROJECT-zsh-history,target=/zsh-volume --name $PROJECT-container $PROJECT-image
 ```

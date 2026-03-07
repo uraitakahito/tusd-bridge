@@ -69,6 +69,13 @@ def db_downgrade(c: Context) -> None:
 
 
 @task
+def db_reset(c: Context) -> None:
+    """DB を削除して再作成."""
+    c.run("rm -f data/tusd_bridge.db")
+    c.run("uv run alembic upgrade head")
+
+
+@task
 def db_revision(c: Context, message: str = "") -> None:
     """alembic revision --autogenerate."""
     if not message:
