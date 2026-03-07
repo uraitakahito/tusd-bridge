@@ -1,6 +1,7 @@
 """Unified event store for domain events."""
 
 import json
+from datetime import datetime, timezone
 
 from google.protobuf.json_format import MessageToDict
 from hook_pb2 import HookRequest
@@ -22,7 +23,7 @@ def append_event(
     stream_type: str,
     event_type: str,
     payload: str,
-) -> tuple[DomainEvent, FileListView]:
+) -> tuple[DomainEvent, FileListView | None]:
     """Append a single event to the domain event store and update projection."""
     event = DomainEvent(
         stream_id=stream_id,
@@ -39,7 +40,7 @@ def append_event(
 
 def append_hook_event(
     session: Session, request: HookRequest
-) -> tuple[DomainEvent, FileListView]:
+) -> tuple[DomainEvent, FileListView | None]:
     """Convert a HookRequest to a DomainEvent and persist it."""
     return append_event(
         session,
@@ -48,3 +49,16 @@ def append_hook_event(
         event_type=f"hook.{request.type}",
         payload=hook_request_to_json(request),
     )
+
+
+def update_upload_progress(session: Session, upload_id: str, offset: int) -> None:
+    """Update upload progress without creating a domain event."""
+    view = session.get(FileListView, upload_id)
+    if view is not None:
+        new_offset = max(view.file_offset or 0, offset)
+        if new_offset != view.file_offset:
+            view.file_offset = new_offset
+            view.updated_at = datetime.now(timezone.utc).strftime(
+                "%Y-%m-%dT%H:%M:%S.%f"
+            )
+            session.commit()

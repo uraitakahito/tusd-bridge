@@ -9,7 +9,7 @@ from hook_pb2 import HookRequest, HookResponse
 from sqlalchemy.orm import Session, sessionmaker
 
 from tusd_bridge.database import get_engine
-from tusd_bridge.event_store import append_hook_event
+from tusd_bridge.event_store import append_hook_event, update_upload_progress
 from tusd_bridge.http_app import create_http_app
 
 logging.basicConfig(
@@ -37,27 +37,36 @@ class HookHandler(HookHandlerBase):
         upload = request.event.upload
         http_req = request.event.httpRequest
 
-        logger.info(
-            "Hook: %s | Upload: %s | Size: %d | Offset: %d | Method: %s %s | Remote: %s | MetaData: %s | Storage: %s",
-            request.type,
-            upload.id,
-            upload.size,
-            upload.offset,
-            http_req.method,
-            http_req.uri,
-            http_req.remoteAddr,
-            dict(upload.metaData),
-            dict(upload.storage),
-        )
-
-        # DB への書き込みだけを行う。SSE クライアントへの配信は
-        # SSE エンドポイントが domain_events テーブルをポーリングして検出するため、
-        # ここでの明示的な通知 (EventBus publish) は不要。
-        with self._session_factory() as session:
-            event, _view = append_hook_event(session, request)
-            logger.info(
-                "Saved event_id=%d for stream_id=%s", event.event_id, event.stream_id
+        # post-receiveは大量に届くため、処理を切り分ける
+        if request.type == "post-receive":
+            logger.debug(
+                "Hook: %s | Upload: %s | Offset: %d",
+                request.type,
+                upload.id,
+                upload.offset,
             )
+            with self._session_factory() as session:
+                update_upload_progress(session, upload.id, upload.offset)
+        else:
+            logger.info(
+                "Hook: %s | Upload: %s | Size: %d | Offset: %d | Method: %s %s | Remote: %s | MetaData: %s | Storage: %s",
+                request.type,
+                upload.id,
+                upload.size,
+                upload.offset,
+                http_req.method,
+                http_req.uri,
+                http_req.remoteAddr,
+                dict(upload.metaData),
+                dict(upload.storage),
+            )
+            with self._session_factory() as session:
+                event, _view = append_hook_event(session, request)
+                logger.info(
+                    "Saved event_id=%d for stream_id=%s",
+                    event.event_id,
+                    event.stream_id,
+                )
 
         await stream.send_message(HookResponse())
 
