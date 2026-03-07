@@ -211,6 +211,9 @@ src/hook_pb2.py
 src/hook_pb2.pyi
 src/hook_grpc.py
 
+# SQLite database
+data/
+
 # Docker
 docker-entrypoint.sh
 Dockerfile

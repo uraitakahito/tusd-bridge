@@ -54,3 +54,23 @@ def format(c: Context) -> None:  # noqa: A001
     """ruff check --fix + ruff format."""
     c.run("uv run ruff check --fix")
     c.run("uv run ruff format")
+
+
+@task
+def db_upgrade(c: Context) -> None:
+    """alembic upgrade head."""
+    c.run("uv run alembic upgrade head")
+
+
+@task
+def db_downgrade(c: Context) -> None:
+    """alembic downgrade -1."""
+    c.run("uv run alembic downgrade -1")
+
+
+@task
+def db_revision(c: Context, message: str = "") -> None:
+    """alembic revision --autogenerate."""
+    if not message:
+        raise ValueError("message is required: inv db-revision --message '...'")
+    c.run(f"uv run alembic revision --autogenerate -m '{message}'")

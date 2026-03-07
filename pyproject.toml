@@ -3,7 +3,9 @@ name = "tusd-bridge"
 version = "0.1.0"
 requires-python = ">=3.12"
 dependencies = [
+    "alembic>=1.15",
     "grpclib[protobuf]>=0.4.7",
+    "sqlalchemy>=2.0",
     "typer>=0.24.1",
 ]
 

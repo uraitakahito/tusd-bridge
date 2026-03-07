@@ -8,6 +8,7 @@
 ```bash
 uv sync
 uv run inv generate
+uv run inv db-upgrade
 ```
 
 ## gRPC Hookサーバーの起動
@@ -20,6 +21,28 @@ or
 
 ```bash
 uv run tusd-bridge --host 0.0.0.0 --port 8000
+```
+
+## データベースマイグレーション
+
+[Alembic](https://alembic.sqlalchemy.org/)でSQLiteデータベース(`data/tusd_bridge.db`)のスキーマを管理しています。
+
+マイグレーションの適用:
+
+```bash
+uv run inv db-upgrade
+```
+
+マイグレーションのロールバック(1つ前に戻す):
+
+```bash
+uv run inv db-downgrade
+```
+
+新しいマイグレーションの生成(`src/tusd_bridge/models.py`を変更した後):
+
+```bash
+uv run inv db-revision --message "変更内容の説明"
 ```
 
 ## tusd Dockerコンテナの起動
