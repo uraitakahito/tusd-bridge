@@ -1,6 +1,6 @@
 # tusd-bridge
 
-[tusd](https://github.com/tus/tusd)の[gRPC Hooks](https://tus.github.io/tusd/advanced-topics/hooks/#grpc-hooks)を受け取り、アップロードイベントをイベントストアに永続化するブリッジサーバー。
+[tusd](https://github.com/tus/tusd)の[gRPC Hooks](https://tus.github.io/tusd/advanced-topics/hooks/#grpc-hooks)から呼び出され、アップロードイベントやファイルのメタ情報をDBに保存します。
 ファイル一覧のREST APIとSSE (Server-Sent Events) によるリアルタイム通知を提供します。
 ファイルをアップロードするクライアントのサンプルは[hello-tus-js-client](https://github.com/uraitakahito/hello-tus-js-client)を想定しています。
 
@@ -12,21 +12,36 @@ uv run inv generate
 uv run inv db-upgrade
 ```
 
-## サーバーの起動
-
-gRPC Hook サーバー (ポート 8000) と HTTP API サーバー (ポート 8001) が同時に起動します。
+### ホストOSでのtusd Dockerコンテナの起動
 
 ```bash
-uv run inv run
+docker run -d --init --rm -p 8080:8080 --name tusd-container docker.io/tusproject/tusd:latest -host=0.0.0.0 -port=8080 -hooks-grpc=host.docker.internal:8000
+```
+
+## サーバーの起動
+
+次のコマンドにより、gRPCサーバーとHTTP APIサーバーが同時に起動します。
+
+```bash
+TUSD_BASE_URL=http://localhost:8080/files/ uv run inv run
 ```
 
 or
 
 ```bash
-uv run tusd-bridge --host 0.0.0.0 --grpc-port 8000 --http-port 8001
+TUSD_BASE_URL=http://localhost:8080/files/ uv run tusd-bridge
 ```
 
-## HTTP API
+### 環境変数
+
+| 環境変数 | 説明 | デフォルト値 |
+|---|---|---|
+| `TUSD_BASE_URL` | tusd の公開ベース URL (必須) | なし |
+| `TUSD_BRIDGE_HOST` | バインドアドレス | `0.0.0.0` |
+| `TUSD_BRIDGE_GRPC_PORT` | gRPC リッスンポート | `8000` |
+| `TUSD_BRIDGE_HTTP_PORT` | HTTP リッスンポート | `8001` |
+
+## HTTP APIによるデバッグ
 
 ### ファイル一覧の取得
 
@@ -56,34 +71,6 @@ curl -N http://localhost:8001/files/events?cursor=42
 
 ```bash
 curl -N -H "Last-Event-ID: 42" http://localhost:8001/files/events
-```
-
-## データベースマイグレーション
-
-[Alembic](https://alembic.sqlalchemy.org/)でSQLiteデータベース(`data/tusd_bridge.db`)のスキーマを管理しています。
-
-マイグレーションの適用:
-
-```bash
-uv run inv db-upgrade
-```
-
-マイグレーションのロールバック(1つ前に戻す):
-
-```bash
-uv run inv db-downgrade
-```
-
-新しいマイグレーションの生成(`src/tusd_bridge/models.py`を変更した後):
-
-```bash
-uv run inv db-revision --message "変更内容の説明"
-```
-
-## tusd Dockerコンテナの起動
-
-```bash
-docker run -d --init --rm -p 8080:8080 --name tusd-container docker.io/tusproject/tusd:latest -host=0.0.0.0 -port=8080 -hooks-grpc=host.docker.internal:8000
 ```
 
 ## Starting the development server with Docker
