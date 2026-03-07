@@ -78,12 +78,22 @@ def _create_list_files_endpoint(
     return list_files
 
 
+def _resolve_cursor(request: Request) -> int:
+    """Resolve the SSE cursor from Last-Event-ID header or cursor query param."""
+    header = request.headers.get("Last-Event-ID", "")
+    if header.isdigit() and int(header) > 0:
+        return int(header)
+    param = request.query_params.get("cursor", "")
+    if param.isdigit():
+        return int(param)
+    return 0
+
+
 def _create_sse_endpoint(
     session_factory: sessionmaker[Session],
 ) -> Any:
     async def sse_endpoint(request: Request) -> StreamingResponse:
-        last_event_id_str = request.headers.get("Last-Event-ID", "0")
-        last_event_id = int(last_event_id_str) if last_event_id_str.isdigit() else 0
+        last_event_id = _resolve_cursor(request)
 
         async def event_stream() -> AsyncIterator[str]:
             # DB をイベントの Single Source of Truth として使用する。
