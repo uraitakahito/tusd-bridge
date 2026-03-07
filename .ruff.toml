@@ -1,0 +1,18 @@
+# This file contains only project-specific Ruff settings
+# https://docs.astral.sh/ruff/configuration/
+
+exclude = [
+    "src/hook_pb2.py",
+    "src/hook_pb2.pyi",
+    "src/hook_grpc.py",
+]
+
+[lint]
+extend-select = ["I"]
+
+[lint.per-file-ignores]
+"__init__.py" = ["F401"]  # Unused import - Allow unused imports in __init__.py (for package public API definition)
+
+[lint.isort]
+known-first-party = ["tusd_bridge"]
+known-third-party = ["hook_pb2", "hook_grpc"]
