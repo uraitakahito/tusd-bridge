@@ -8,19 +8,29 @@ from sqlalchemy.orm import Session
 
 from tusd_bridge.models import DomainEvent, FileListView
 
+STATUS_PRIORITY: dict[str, int] = {
+    "creating": 0,
+    "created": 1,
+    "uploading": 2,
+    "finishing": 3,
+    "uploaded": 4,
+    "terminating": 5,
+    "terminated": 6,
+}
+
 EVENT_TYPE_TO_DISPLAY_STATUS: dict[str, str] = {
     "hook.pre-create": "creating",
     "hook.post-create": "created",
-    "hook.post-receive": "uploading",
+    #
+    # hook.post-receiveを取り扱うには２つ問題があるため、一旦無視をする
+    # 1. post-finishより後にpost-receiveが到着することがある
+    # 2. post-receiveは大量に発生するため、DBが肥大化する
+    # "hook.post-receive": "uploading",
+    #
     "hook.pre-finish": "finishing",
     "hook.post-finish": "uploaded",
     "hook.pre-terminate": "terminating",
     "hook.post-terminate": "terminated",
-    # Future conversion statuses:
-    # "conversion.started": "converting",
-    # "conversion.progress": "converting",
-    # "conversion.completed": "ready",
-    # "conversion.failed": "conv_failed",
 }
 
 
@@ -52,11 +62,22 @@ def _safe_int(val: Any) -> int | None:
     return None
 
 
-def project_event(session: Session, event: DomainEvent) -> FileListView:
+def _should_update_status(current: str, new: str) -> bool:
+    """Return True if the new status should replace the current one."""
+    current_p = STATUS_PRIORITY.get(current, -1)
+    new_p = STATUS_PRIORITY.get(new, -1)
+    return new_p >= current_p
+
+
+def project_event(session: Session, event: DomainEvent) -> FileListView | None:
     """Update the file_list_view projection from a single DomainEvent.
 
     Must be called within the same transaction as the event insert.
+    Returns None if the event cannot be projected (e.g. empty stream_id).
     """
+    if not event.stream_id:
+        return None
+
     now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")
     display_status = EVENT_TYPE_TO_DISPLAY_STATUS.get(
         event.event_type, event.event_type
@@ -99,7 +120,8 @@ def project_event(session: Session, event: DomainEvent) -> FileListView:
             )
             session.add(view)
         else:
-            view.display_status = display_status
+            if _should_update_status(view.display_status, display_status):
+                view.display_status = display_status
             view.file_size = file_size
             view.file_offset = file_offset
             view.filename = filename
@@ -110,10 +132,9 @@ def project_event(session: Session, event: DomainEvent) -> FileListView:
             view.last_event_id = event.event_id
             view.updated_at = now
     elif view is not None:
-        # Future: handle "conversion" stream_type
-        view.display_status = display_status
+        if _should_update_status(view.display_status, display_status):
+            view.display_status = display_status
         view.last_event_id = event.event_id
         view.updated_at = now
 
-    assert view is not None
     return view
