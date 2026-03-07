@@ -6,7 +6,9 @@ dependencies = [
     "alembic>=1.15",
     "grpclib[protobuf]>=0.4.7",
     "sqlalchemy>=2.0",
+    "starlette>=0.46",
     "typer>=0.24.1",
+    "uvicorn[standard]>=0.34",
 ]
 
 [dependency-groups]
