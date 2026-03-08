@@ -3,9 +3,42 @@
 - [tusd](https://github.com/tus/tusd)の[gRPC Hooks](https://tus.github.io/tusd/advanced-topics/hooks/#grpc-hooks)から呼び出され、アップロードイベントやファイルのメタ情報をDBに保存します。
 - ファイル一覧のREST APIとSSE (Server-Sent Events) によるリアルタイム通知を提供します。
 - ファイルをアップロードするクライアントのサンプルは[tusd-bridge-client](https://github.com/uraitakahito/tusd-bridge-client)を想定しています。
-- (実装中)アップロード完了時に [tusd-bridge-airflow](https://github.com/uraitakahito/tusd-bridge-airflow) や [AIRFLOW.md](AIRFLOW.md) のように設定された Airflowと連携して、Airflow DAGを起動してファイル変換などのパイプラインを実行します。
+- アップロード完了時に Airflow DAGを起動してファイル変換などの後処理パイプラインを実行します。詳細は [AIRFLOW.md](AIRFLOW.md) を参照してください。
 
-## セットアップ
+## Docker Compose によるバックエンド一括起動
+
+`docker-compose.yml` により、以下のサービスが一括で起動します:
+
+| サービス | 説明 | ホストポート |
+|---|---|---|
+| `tusd-bridge` | 開発用コンテナ (gRPC + HTTP サーバー) | 8000, 8001 |
+| `tusd` | TUS プロトコル対応ファイルアップロードサーバー | 8080 |
+| `airflow-webserver` | Airflow Web UI | 8082 |
+| `airflow-scheduler` | Airflow スケジューラー | - |
+| `postgres` | Airflow 用 PostgreSQL | - |
+| `minio` | S3 互換オブジェクトストレージ | 9000, 9001 |
+
+### 開発用 Dockerfile の取得
+
+```console
+% curl -L -O https://raw.githubusercontent.com/uraitakahito/hello_python_uv/refs/tags/1.1.0/Dockerfile
+% curl -L -O https://raw.githubusercontent.com/uraitakahito/hello_python_uv/refs/tags/1.1.0/docker-entrypoint.sh
+% chmod 755 docker-entrypoint.sh
+```
+
+### 起動
+
+コンテナ内で `gh` コマンドを使うために `GH_TOKEN` を渡します:
+
+```bash
+GH_TOKEN=$(gh auth token) docker compose up -d
+```
+
+### tusd-bridge コンテナでの作業
+
+コンテナにアタッチするか、VS Code の「Dev Containers: Attach to Running Container」でコンテナに接続して `/app` ディレクトリを開きます。
+
+コンテナ内で初回セットアップ:
 
 ```bash
 uv sync
@@ -13,25 +46,15 @@ uv run inv generate
 uv run inv db-upgrade
 ```
 
-### ホストOSでのtusd Dockerコンテナの起動
+サーバーの起動:
 
 ```bash
-docker run -d --init --rm -p 8080:8080 --name tusd-container docker.io/tusproject/tusd:latest -host=0.0.0.0 -port=8080 -hooks-grpc=host.docker.internal:8000
+TUSD_DOWNLOAD_BASE_URL=http://localhost:8080/files/ AIRFLOW_BASE_URL=http://airflow-webserver:8080 AIRFLOW_AUTH_TOKEN=$(echo -n "admin:admin" | base64) AIRFLOW_DAG_ID=file_post_processing uv run inv run
 ```
 
-## サーバーの起動
+### フロントエンド (tusd-bridge-client)
 
-次のコマンドにより、gRPCサーバーとHTTP APIサーバーが同時に起動します。
-
-```bash
-TUSD_DOWNLOAD_BASE_URL=http://localhost:8080/files/ AIRFLOW_BASE_URL=http://host.docker.internal:8082 AIRFLOW_AUTH_TOKEN=$(echo -n "admin:admin" | base64) AIRFLOW_DAG_ID=file_post_processing uv run inv run
-```
-
-or
-
-```bash
-TUSD_DOWNLOAD_BASE_URL=http://localhost:8080/files/ AIRFLOW_BASE_URL=http://host.docker.internal:8082 AIRFLOW_AUTH_TOKEN=$(echo -n "admin:admin" | base64) AIRFLOW_DAG_ID=file_post_processing uv run tusd-bridge
-```
+フロントエンドの Nginx は別途 [tusd-bridge-client](https://github.com/uraitakahito/tusd-bridge-client) リポジトリで起動します。
 
 ### 環境変数
 
@@ -81,21 +104,4 @@ curl -N http://localhost:8001/files/events?cursor=42
 
 ```bash
 curl -N -H "Last-Event-ID: 42" http://localhost:8001/files/events
-```
-
-## Starting the development server with Docker
-
-If you develop inside a Docker container, run the following commands and read the documentation at the top of the Dockerfile to set up your development environment.
-
-```console
-% curl -L -O https://raw.githubusercontent.com/uraitakahito/hello_python_uv/refs/tags/1.1.0/Dockerfile
-% curl -L -O https://raw.githubusercontent.com/uraitakahito/hello_python_uv/refs/tags/1.1.0/docker-entrypoint.sh
-% chmod 755 docker-entrypoint.sh
-```
-
-ただし、gRPCサーバーとHTTPサーバーのポートを公開する必要があるので、コンテナの起動コマンドは次のようになります。
-
-```console
-% PROJECT=$(basename `pwd`) && docker image build -t $PROJECT-image . --build-arg user_id=`id -u` --build-arg group_id=`id -g`
-% docker container run -d --rm --init -p 8000:8000 -p 8001:8001 -v /run/host-services/ssh-auth.sock:/run/host-services/ssh-auth.sock -e SSH_AUTH_SOCK=/run/host-services/ssh-auth.sock -e GH_TOKEN=$(gh auth token) --mount type=bind,src=`pwd`,dst=/app --mount type=volume,source=$PROJECT-zsh-history,target=/zsh-volume --name $PROJECT-container $PROJECT-image
 ```
