@@ -21,23 +21,28 @@ POLLING_INTERVAL_SECONDS = 0.5
 
 VALID_PROCESSING_STATUSES = {"completed", "failed"}
 
+REQUIRED_OUTPUT_FIELDS = {"filename", "filetype", "url", "size"}
+
 
 def view_to_dict(view: FileListView, tusd_download_base_url: str) -> dict[str, Any]:
-    original: dict[str, Any] = {
-        "filename": view.filename,
-        "filetype": view.filetype,
-        "url": f"{tusd_download_base_url}/{view.upload_id}",
-        "size": view.file_size,
-    }
-    converted: list[dict[str, Any]] | None = None
+    files: list[dict[str, Any]] = [
+        {
+            "role": "original",
+            "filename": view.filename,
+            "filetype": view.filetype,
+            "url": f"{tusd_download_base_url}/{view.upload_id}",
+            "size": view.file_size,
+        },
+    ]
     if view.outputs_json:
-        converted = json.loads(view.outputs_json)
+        outputs: list[dict[str, Any]] = json.loads(view.outputs_json)
+        for item in outputs:
+            files.append({"role": "converted", **item})
 
     return {
         "upload_id": view.upload_id,
         "display_status": view.display_status,
-        "original": original,
-        "converted": converted,
+        "files": files,
         "file_offset": view.file_offset,
         "updated_at": view.updated_at,
     }
@@ -160,11 +165,6 @@ def _create_rerun_endpoint(
             view = session.get(FileListView, upload_id)
             if view is None:
                 return JSONResponse({"error": "upload not found"}, status_code=404)
-            if view.filename is None:
-                return JSONResponse(
-                    {"error": "filename is missing, cannot rerun processing"},
-                    status_code=400,
-                )
             download_url = f"{tusd_download_base_url}/{upload_id}"
             payload = DagTriggerPayload(
                 upload_id=upload_id,
@@ -208,6 +208,20 @@ def _create_webhook_endpoint(
                     {"error": "outputs array is required when status is completed"},
                     status_code=400,
                 )
+            for i, item in enumerate(cast(list[Any], outputs_val)):
+                if not isinstance(item, dict):
+                    return JSONResponse(
+                        {"error": f"outputs[{i}] must be an object"},
+                        status_code=400,
+                    )
+                missing = REQUIRED_OUTPUT_FIELDS - item.keys()
+                if missing:
+                    return JSONResponse(
+                        {
+                            "error": f"outputs[{i}] missing required fields: {', '.join(sorted(missing))}"
+                        },
+                        status_code=400,
+                    )
 
         with session_factory() as session:
             view = session.get(FileListView, upload_id)

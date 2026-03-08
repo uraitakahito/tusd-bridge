@@ -110,7 +110,12 @@ POST /webhooks/processing-result
     "status": "completed",
     "dag_run_id": "manual__2026-03-08T10:00:00+00:00",
     "outputs": [
-        {"format": "mp4", "path": "/converted/abc123.mp4", "size": 12345}
+        {
+            "filename": "abc123.mp4",
+            "filetype": "video/mp4",
+            "url": "http://localhost:8080/converted/abc123.mp4",
+            "size": 12345
+        }
     ]
 }
 ```
@@ -120,7 +125,16 @@ POST /webhooks/processing-result
 | `upload_id` | string | Yes | 対象のアップロード ID |
 | `status` | string | Yes | `"completed"` または `"failed"` |
 | `dag_run_id` | string | No | Airflow の DAG Run ID |
-| `outputs` | array | No | 変換結果のファイル情報 (成功時) |
+| `outputs` | array | Yes (`status` が `completed` の場合) | 変換結果のファイル情報 |
+
+`outputs` 配列の各要素:
+
+| フィールド | 型 | 必須 | 説明 |
+|---|---|---|---|
+| `filename` | string | Yes | ファイル名 |
+| `filetype` | string | Yes | MIME タイプ |
+| `url` | string | Yes | ダウンロード URL |
+| `size` | int | Yes | ファイルサイズ (bytes) |
 
 `status` に応じて `processing.completed` または `processing.failed` イベントが記録され、`file_list_view` のステータスが更新されます。
 

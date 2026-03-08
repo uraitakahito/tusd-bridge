@@ -5,7 +5,7 @@ import typer
 import uvicorn
 from grpclib.server import Server, Stream
 from hook_grpc import HookHandlerBase
-from hook_pb2 import HookRequest, HookResponse
+from hook_pb2 import HookRequest, HookResponse, HTTPResponse
 from sqlalchemy.orm import Session, sessionmaker
 
 from tusd_bridge.airflow_client import AirflowClient, DagTriggerPayload
@@ -43,6 +43,32 @@ class HookHandler(HookHandlerBase):
         upload = request.event.upload
         http_req = request.event.httpRequest
 
+        # pre-create 時にメタデータの必須フィールドを検証
+        if request.type == "pre-create":
+            metadata = dict(upload.metaData)
+            missing: list[str] = []
+            if not metadata.get("filename"):
+                missing.append("filename")
+            if not metadata.get("filetype"):
+                missing.append("filetype")
+            if upload.size <= 0:
+                missing.append("size (must be > 0)")
+            if missing:
+                logger.warning(
+                    "Rejecting upload: missing required fields: %s",
+                    ", ".join(missing),
+                )
+                await stream.send_message(
+                    HookResponse(
+                        rejectUpload=True,
+                        httpResponse=HTTPResponse(
+                            statusCode=400,
+                            body=f"Missing required fields: {', '.join(missing)}",
+                        ),
+                    )
+                )
+                return
+
         # post-receiveは大量に届くため、処理を切り分ける
         if request.type == "post-receive":
             logger.debug(
@@ -76,20 +102,13 @@ class HookHandler(HookHandlerBase):
                 if request.type == "post-finish":
                     download_url = f"{self._tusd_download_base_url}/{upload.id}"
                     metadata = dict(upload.metaData)
-                    filename = metadata.get("filename")
-                    if filename is None:
-                        logger.warning(
-                            "Skipping post-processing: filename is missing for upload_id=%s",
-                            upload.id,
-                        )
-                    else:
-                        payload = DagTriggerPayload(
-                            upload_id=upload.id,
-                            download_url=download_url,
-                            filename=filename,
-                            filetype=metadata.get("filetype"),
-                        )
-                        trigger_processing(session, payload, self._airflow_client)
+                    payload = DagTriggerPayload(
+                        upload_id=upload.id,
+                        download_url=download_url,
+                        filename=metadata["filename"],
+                        filetype=metadata["filetype"],
+                    )
+                    trigger_processing(session, payload, self._airflow_client)
 
         await stream.send_message(HookResponse())
 

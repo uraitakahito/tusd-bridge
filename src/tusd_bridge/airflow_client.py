@@ -16,7 +16,7 @@ class DagTriggerPayload:
     upload_id: str
     download_url: str
     filename: str
-    filetype: str | None
+    filetype: str
 
 
 class AirflowClient:

@@ -74,13 +74,13 @@ def upgrade() -> None:
         #   "terminating" / "terminated" / "converting" (将来) / "ready" (将来)
         sa.Column("display_status", sa.Text(), nullable=False),
         # アップロードファイルのサイズ (bytes)
-        sa.Column("file_size", sa.Integer(), nullable=True),
+        sa.Column("file_size", sa.Integer(), nullable=False),
         # 現在のアップロード済みオフセット (bytes)
         sa.Column("file_offset", sa.Integer(), nullable=True),
         # クライアントが指定したファイル名 (metaData.filename)
-        sa.Column("filename", sa.Text(), nullable=True),
+        sa.Column("filename", sa.Text(), nullable=False),
         # クライアントが指定したファイル種別 (metaData.filetype)
-        sa.Column("filetype", sa.Text(), nullable=True),
+        sa.Column("filetype", sa.Text(), nullable=False),
         # tusd metaData の JSON 文字列
         sa.Column("metadata", sa.Text(), nullable=True),
         # tusd storage 情報の JSON 文字列

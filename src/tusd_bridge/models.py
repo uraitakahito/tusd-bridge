@@ -35,10 +35,10 @@ class FileListView(Base):
 
     upload_id: Mapped[str] = mapped_column(Text, primary_key=True)
     display_status: Mapped[str] = mapped_column(Text, nullable=False)
-    file_size: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    file_size: Mapped[int] = mapped_column(Integer, nullable=False)
     file_offset: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    filename: Mapped[str | None] = mapped_column(Text, nullable=True)
-    filetype: Mapped[str | None] = mapped_column(Text, nullable=True)
+    filename: Mapped[str] = mapped_column(Text, nullable=False)
+    filetype: Mapped[str] = mapped_column(Text, nullable=False)
     metadata_json: Mapped[str | None] = mapped_column("metadata", Text, nullable=True)
     storage_json: Mapped[str | None] = mapped_column("storage", Text, nullable=True)
     remote_addr: Mapped[str | None] = mapped_column(Text, nullable=True)
