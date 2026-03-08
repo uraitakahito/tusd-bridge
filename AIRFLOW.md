@@ -63,9 +63,9 @@ creating → created → uploading → finishing → uploaded → processing →
 
 | イベント種別 | 発生タイミング | payload の内容 |
 |---|---|---|
-| `processing.triggered` | Airflow DAG トリガー成功時 | `upload_id`, `download_url`, `dag_run_id` |
+| `processing.triggered` | Airflow DAG トリガー成功時 | `upload_id`, `download_url`, `filename`, `filetype`, `dag_run_id` |
 | `processing.completed` | Webhook で正常完了を受信時 | Webhook リクエストボディ全体 |
-| `processing.failed` | Airflow API 呼び出し失敗時、または Webhook で失敗を受信時 | エラー情報または Webhook リクエストボディ全体 |
+| `processing.failed` | Airflow API 呼び出し失敗時、または Webhook で失敗を受信時 | エラー情報 (`upload_id`, `download_url`, `filename`, `filetype`, `error`) または Webhook リクエストボディ全体 |
 
 これらのイベントは SSE (`GET /files/events`) でもリアルタイムに通知されます。
 
@@ -85,12 +85,14 @@ POST /api/v1/dags/{dag_id}/dagRuns
 {
     "conf": {
         "upload_id": "abc123...",
-        "download_url": "http://localhost:8080/files/abc123..."
+        "download_url": "http://localhost:8080/files/abc123...",
+        "filename": "video.mov",
+        "filetype": "video/quicktime"
     }
 }
 ```
 
-DAG 側では `dag_run.conf['upload_id']` と `dag_run.conf['download_url']` でアップロード情報にアクセスできます。
+DAG 側では `dag_run.conf['upload_id']`、`dag_run.conf['download_url']`、`dag_run.conf['filename']`、`dag_run.conf['filetype']` でアップロード情報にアクセスできます。`filename` は必須、`filetype` はクライアントが指定しなかった場合 `null` になります。
 
 ### Webhook コールバックエンドポイント
 
@@ -144,7 +146,9 @@ curl -X POST http://localhost:8001/files/{upload_id}/rerun
 {"upload_id": "abc123...", "status": "triggered"}
 ```
 
-存在しない `upload_id` を指定した場合は `404` が返ります。
+エラーレスポンス:
+- `400`: `filename` が未設定のアップロードに対して再実行を要求した場合
+- `404`: 指定した `upload_id` が存在しない
 
 ### SSE での後処理イベントの受信
 
