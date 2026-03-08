@@ -99,13 +99,12 @@ def project_event(session: Session, event: DomainEvent) -> FileListView | None:
         meta_data = _get_dict(upload, "metaData")
         storage = _get_dict(upload, "storage")
 
-        file_size = _safe_int(upload.get("size"))
+        file_size_val = _safe_int(upload.get("size"))
+        file_size = file_size_val if file_size_val is not None else 0
         file_offset = _safe_int(upload.get("offset"))
 
-        filename_val = meta_data.get("filename")
-        filename = str(filename_val) if filename_val is not None else None
-        filetype_val = meta_data.get("filetype")
-        filetype = str(filetype_val) if filetype_val is not None else None
+        filename = str(meta_data["filename"])
+        filetype = str(meta_data["filetype"])
         remote_addr_val = http_request.get("remoteAddr")
         remote_addr = str(remote_addr_val) if remote_addr_val is not None else None
 

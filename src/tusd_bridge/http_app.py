@@ -160,11 +160,6 @@ def _create_rerun_endpoint(
             view = session.get(FileListView, upload_id)
             if view is None:
                 return JSONResponse({"error": "upload not found"}, status_code=404)
-            if view.filename is None:
-                return JSONResponse(
-                    {"error": "filename is missing, cannot rerun processing"},
-                    status_code=400,
-                )
             download_url = f"{tusd_download_base_url}/{upload_id}"
             payload = DagTriggerPayload(
                 upload_id=upload_id,
