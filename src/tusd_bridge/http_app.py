@@ -3,7 +3,7 @@
 import asyncio
 import json
 from collections.abc import AsyncIterator
-from typing import Any
+from typing import Any, cast
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
@@ -23,17 +23,22 @@ VALID_PROCESSING_STATUSES = {"completed", "failed"}
 
 
 def view_to_dict(view: FileListView, tusd_download_base_url: str) -> dict[str, Any]:
+    original: dict[str, Any] = {
+        "filename": view.filename,
+        "filetype": view.filetype,
+        "url": f"{tusd_download_base_url}/{view.upload_id}",
+        "size": view.file_size,
+    }
+    converted: list[dict[str, Any]] | None = None
+    if view.outputs_json:
+        converted = json.loads(view.outputs_json)
+
     return {
         "upload_id": view.upload_id,
         "display_status": view.display_status,
-        "download_url": f"{tusd_download_base_url}/{view.upload_id}",
-        "file_size": view.file_size,
+        "original": original,
+        "converted": converted,
         "file_offset": view.file_offset,
-        "filename": view.filename,
-        "filetype": view.filetype,
-        "conversion_summary": (
-            json.loads(view.conversion_summary) if view.conversion_summary else None
-        ),
         "updated_at": view.updated_at,
     }
 
@@ -192,6 +197,17 @@ def _create_webhook_endpoint(
                 },
                 status_code=400,
             )
+
+        if status == "completed":
+            outputs_val: object = body.get("outputs")
+            if (
+                not isinstance(outputs_val, list)
+                or len(cast(list[Any], outputs_val)) == 0
+            ):
+                return JSONResponse(
+                    {"error": "outputs array is required when status is completed"},
+                    status_code=400,
+                )
 
         with session_factory() as session:
             view = session.get(FileListView, upload_id)

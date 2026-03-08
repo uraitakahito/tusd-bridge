@@ -42,7 +42,7 @@ class FileListView(Base):
     metadata_json: Mapped[str | None] = mapped_column("metadata", Text, nullable=True)
     storage_json: Mapped[str | None] = mapped_column("storage", Text, nullable=True)
     remote_addr: Mapped[str | None] = mapped_column(Text, nullable=True)
-    conversion_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    outputs_json: Mapped[str | None] = mapped_column("outputs", Text, nullable=True)
     last_event_id: Mapped[int] = mapped_column(
         Integer,
         ForeignKey("domain_events.event_id"),

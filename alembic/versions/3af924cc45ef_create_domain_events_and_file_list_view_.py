@@ -87,8 +87,8 @@ def upgrade() -> None:
         sa.Column("storage", sa.Text(), nullable=True),
         # アップロード元のリモートアドレス
         sa.Column("remote_addr", sa.Text(), nullable=True),
-        # 変換ジョブの状態サマリ JSON 配列 (将来用, 初期は NULL)
-        sa.Column("conversion_summary", sa.Text(), nullable=True),
+        # 後処理の出力情報 JSON 配列 (Webhook の outputs をそのまま格納)
+        sa.Column("outputs", sa.Text(), nullable=True),
         # 最後に処理した domain_events.event_id
         sa.Column("last_event_id", sa.Integer(), nullable=False),
         # レコード作成日時 (ISO 8601, アプリケーション側で設定)
