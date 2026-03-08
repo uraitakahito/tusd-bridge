@@ -6,10 +6,11 @@ from datetime import datetime
 
 import requests
 import trimesh
-from airflow import DAG
 from airflow.operators.python import BranchPythonOperator, PythonOperator
 from airflow.providers.amazon.aws.hooks.s3 import S3Hook
 from airflow.providers.http.hooks.http import HttpHook
+
+from airflow import DAG
 
 logger = logging.getLogger(__name__)
 
@@ -44,9 +45,7 @@ def convert_file(**context):
     with tempfile.TemporaryDirectory() as tmpdir:
         # GLB をダウンロード
         # download_url はクライアント向け (localhost) のため、コンテナ内では tusd サービス名に置き換える
-        internal_url = download_url.replace(
-            "://localhost:8080", "://tusd:8080"
-        )
+        internal_url = download_url.replace("://localhost:8080", "://tusd:8080")
         glb_path = os.path.join(tmpdir, f"{upload_id}.glb")
         resp = requests.get(internal_url, timeout=300)
         resp.raise_for_status()
