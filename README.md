@@ -41,13 +41,23 @@ TUSD_DOWNLOAD_BASE_URL=http://localhost:8080/files/ uv run tusd-bridge
 | `TUSD_BRIDGE_GRPC_PORT` | gRPC リッスンポート | `8000` |
 | `TUSD_BRIDGE_HTTP_PORT` | HTTP リッスンポート | `8001` |
 
+## Airflow 連携
+
+アップロード完了時に Airflow DAG を起動して後処理 (ファイル変換など) を実行する仕組みについては [AIRFLOW.md](AIRFLOW.md) を参照してください。
+
 ## HTTP APIによるデバッグ
 
 ### ファイル一覧の取得
 
 ```bash
 curl http://localhost:8001/files
-curl http://localhost:8001/files?status=uploaded,converting&limit=10
+curl http://localhost:8001/files?status=uploaded,processing&limit=10
+```
+
+### 後処理の再実行
+
+```bash
+curl -X POST http://localhost:8001/files/{upload_id}/rerun
 ```
 
 ### SSE (Server-Sent Events) によるリアルタイム通知
