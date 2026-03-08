@@ -49,11 +49,7 @@ uv run inv db-upgrade
 サーバーの起動:
 
 ```bash
-TUSD_DOWNLOAD_BASE_URL=http://localhost:8080/files/ \
-AIRFLOW_BASE_URL=http://airflow-webserver:8080 \
-AIRFLOW_AUTH_TOKEN=$(echo -n "admin:admin" | base64) \
-AIRFLOW_DAG_ID=file_post_processing \
-uv run inv run
+TUSD_DOWNLOAD_BASE_URL=http://localhost:8080/files/ AIRFLOW_BASE_URL=http://airflow-webserver:8080 AIRFLOW_AUTH_TOKEN=$(echo -n "admin:admin" | base64) AIRFLOW_DAG_ID=file_post_processing uv run inv run
 ```
 
 ### フロントエンド (tusd-bridge-client)
