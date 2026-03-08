@@ -214,6 +214,9 @@ src/hook_grpc.py
 # SQLite database
 data/
 
-# Docker
-docker-entrypoint.sh
-Dockerfile
+# Docker (ルートの開発用ファイルのみ除外)
+/docker-entrypoint.sh
+/Dockerfile
+
+# Airflow logs
+airflow/logs/
