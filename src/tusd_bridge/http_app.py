@@ -23,14 +23,21 @@ VALID_PROCESSING_STATUSES = {"completed", "failed"}
 
 REQUIRED_OUTPUT_FIELDS = {"filename", "filetype", "url", "size"}
 
+DOWNLOADABLE_STATUSES = {"uploaded", "processing", "processed", "failed"}
+
 
 def view_to_dict(view: FileListView, tusd_download_base_url: str) -> dict[str, Any]:
+    original_url: str | None = (
+        f"{tusd_download_base_url}/{view.upload_id}"
+        if view.display_status in DOWNLOADABLE_STATUSES
+        else None
+    )
     files: list[dict[str, Any]] = [
         {
             "role": "original",
             "filename": view.filename,
             "filetype": view.filetype,
-            "url": f"{tusd_download_base_url}/{view.upload_id}",
+            "url": original_url,
             "size": view.file_size,
         },
     ]
