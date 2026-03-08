@@ -145,6 +145,13 @@ def project_event(session: Session, event: DomainEvent) -> FileListView | None:
             view.display_status = display_status
         elif _should_update_status(view.display_status, display_status):
             view.display_status = display_status
+
+        if event.event_type == "processing.completed":
+            payload_data: dict[str, Any] = json.loads(event.payload)
+            outputs = payload_data.get("outputs")
+            if isinstance(outputs, list):
+                view.outputs_json = json.dumps(outputs, ensure_ascii=False)
+
         view.last_event_id = event.event_id
         view.updated_at = now
 
