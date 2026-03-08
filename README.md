@@ -24,13 +24,13 @@ docker run -d --init --rm -p 8080:8080 --name tusd-container docker.io/tusprojec
 次のコマンドにより、gRPCサーバーとHTTP APIサーバーが同時に起動します。
 
 ```bash
-TUSD_DOWNLOAD_BASE_URL=http://localhost:8080/files/ uv run inv run
+TUSD_DOWNLOAD_BASE_URL=http://localhost:8080/files/ AIRFLOW_BASE_URL=http://host.docker.internal:8082 AIRFLOW_AUTH_TOKEN=$(echo -n "admin:admin" | base64) AIRFLOW_DAG_ID=file_post_processing uv run inv run
 ```
 
 or
 
 ```bash
-TUSD_DOWNLOAD_BASE_URL=http://localhost:8080/files/ uv run tusd-bridge
+TUSD_DOWNLOAD_BASE_URL=http://localhost:8080/files/ AIRFLOW_BASE_URL=http://host.docker.internal:8082 AIRFLOW_AUTH_TOKEN=$(echo -n "admin:admin" | base64) AIRFLOW_DAG_ID=file_post_processing uv run tusd-bridge
 ```
 
 ### 環境変数
@@ -41,6 +41,9 @@ TUSD_DOWNLOAD_BASE_URL=http://localhost:8080/files/ uv run tusd-bridge
 | `TUSD_BRIDGE_HOST` | バインドアドレス | `0.0.0.0` |
 | `TUSD_BRIDGE_GRPC_PORT` | gRPC リッスンポート | `8000` |
 | `TUSD_BRIDGE_HTTP_PORT` | HTTP リッスンポート | `8001` |
+| `AIRFLOW_BASE_URL` | Airflow REST API のベース URL (必須) | なし |
+| `AIRFLOW_AUTH_TOKEN` | Airflow API の認証トークン (Basic Auth, base64 エンコード済み, 必須) | なし |
+| `AIRFLOW_DAG_ID` | トリガーする DAG の ID | `file_post_processing` |
 
 ## HTTP APIによるデバッグ
 
