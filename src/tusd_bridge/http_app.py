@@ -12,7 +12,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, StreamingResponse
 from starlette.routing import Route
 
-from tusd_bridge.airflow_client import AirflowClient
+from tusd_bridge.airflow_client import AirflowClient, DagTriggerPayload
 from tusd_bridge.event_store import append_event
 from tusd_bridge.models import DomainEvent, FileListView
 from tusd_bridge.processing import trigger_processing
@@ -155,8 +155,19 @@ def _create_rerun_endpoint(
             view = session.get(FileListView, upload_id)
             if view is None:
                 return JSONResponse({"error": "upload not found"}, status_code=404)
+            if view.filename is None:
+                return JSONResponse(
+                    {"error": "filename is missing, cannot rerun processing"},
+                    status_code=400,
+                )
             download_url = f"{tusd_download_base_url}/{upload_id}"
-            trigger_processing(session, upload_id, download_url, airflow_client)
+            payload = DagTriggerPayload(
+                upload_id=upload_id,
+                download_url=download_url,
+                filename=view.filename,
+                filetype=view.filetype,
+            )
+            trigger_processing(session, payload, airflow_client)
 
         return JSONResponse({"upload_id": upload_id, "status": "triggered"})
 

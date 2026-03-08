@@ -8,7 +8,7 @@ from hook_grpc import HookHandlerBase
 from hook_pb2 import HookRequest, HookResponse
 from sqlalchemy.orm import Session, sessionmaker
 
-from tusd_bridge.airflow_client import AirflowClient
+from tusd_bridge.airflow_client import AirflowClient, DagTriggerPayload
 from tusd_bridge.database import get_engine
 from tusd_bridge.event_store import append_hook_event, update_upload_progress
 from tusd_bridge.http_app import create_http_app
@@ -75,9 +75,21 @@ class HookHandler(HookHandlerBase):
                 )
                 if request.type == "post-finish":
                     download_url = f"{self._tusd_download_base_url}/{upload.id}"
-                    trigger_processing(
-                        session, upload.id, download_url, self._airflow_client
-                    )
+                    metadata = dict(upload.metaData)
+                    filename = metadata.get("filename")
+                    if filename is None:
+                        logger.warning(
+                            "Skipping post-processing: filename is missing for upload_id=%s",
+                            upload.id,
+                        )
+                    else:
+                        payload = DagTriggerPayload(
+                            upload_id=upload.id,
+                            download_url=download_url,
+                            filename=filename,
+                            filetype=metadata.get("filetype"),
+                        )
+                        trigger_processing(session, payload, self._airflow_client)
 
         await stream.send_message(HookResponse())
 

@@ -2,7 +2,7 @@
 
 - [tusd](https://github.com/tus/tusd)の[gRPC Hooks](https://tus.github.io/tusd/advanced-topics/hooks/#grpc-hooks)から呼び出され、アップロードイベントやファイルのメタ情報をDBに保存します。
 - ファイル一覧のREST APIとSSE (Server-Sent Events) によるリアルタイム通知を提供します。
-- ファイルをアップロードするクライアントのサンプルは[hello-tus-js-client](https://github.com/uraitakahito/hello-tus-js-client)を想定しています。
+- ファイルをアップロードするクライアントのサンプルは[tusd-bridge-client](https://github.com/uraitakahito/tusd-bridge-client)を想定しています。
 - (実装中)アップロード完了時に [tusd-bridge-airflow](https://github.com/uraitakahito/tusd-bridge-airflow) や [AIRFLOW.md](AIRFLOW.md) のように設定された Airflowと連携して、Airflow DAGを起動してファイル変換などのパイプラインを実行します。
 
 ## セットアップ
