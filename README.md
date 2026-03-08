@@ -1,8 +1,9 @@
 # tusd-bridge
 
-[tusd](https://github.com/tus/tusd)の[gRPC Hooks](https://tus.github.io/tusd/advanced-topics/hooks/#grpc-hooks)から呼び出され、アップロードイベントやファイルのメタ情報をDBに保存します。
-ファイル一覧のREST APIとSSE (Server-Sent Events) によるリアルタイム通知を提供します。
-ファイルをアップロードするクライアントのサンプルは[hello-tus-js-client](https://github.com/uraitakahito/hello-tus-js-client)を想定しています。
+- [tusd](https://github.com/tus/tusd)の[gRPC Hooks](https://tus.github.io/tusd/advanced-topics/hooks/#grpc-hooks)から呼び出され、アップロードイベントやファイルのメタ情報をDBに保存します。
+- ファイル一覧のREST APIとSSE (Server-Sent Events) によるリアルタイム通知を提供します。
+- ファイルをアップロードするクライアントのサンプルは[hello-tus-js-client](https://github.com/uraitakahito/hello-tus-js-client)を想定しています。
+- (実装中)アップロード完了時に [tusd-bridge-airflow](https://github.com/uraitakahito/tusd-bridge-airflow) や [AIRFLOW.md](AIRFLOW.md) のように設定された Airflowと連携して、Airflow DAGを起動してファイル変換などのパイプラインを実行します。
 
 ## セットアップ
 
@@ -23,13 +24,13 @@ docker run -d --init --rm -p 8080:8080 --name tusd-container docker.io/tusprojec
 次のコマンドにより、gRPCサーバーとHTTP APIサーバーが同時に起動します。
 
 ```bash
-TUSD_DOWNLOAD_BASE_URL=http://localhost:8080/files/ uv run inv run
+TUSD_DOWNLOAD_BASE_URL=http://localhost:8080/files/ AIRFLOW_BASE_URL=http://host.docker.internal:8082 AIRFLOW_AUTH_TOKEN=$(echo -n "admin:admin" | base64) AIRFLOW_DAG_ID=file_post_processing uv run inv run
 ```
 
 or
 
 ```bash
-TUSD_DOWNLOAD_BASE_URL=http://localhost:8080/files/ uv run tusd-bridge
+TUSD_DOWNLOAD_BASE_URL=http://localhost:8080/files/ AIRFLOW_BASE_URL=http://host.docker.internal:8082 AIRFLOW_AUTH_TOKEN=$(echo -n "admin:admin" | base64) AIRFLOW_DAG_ID=file_post_processing uv run tusd-bridge
 ```
 
 ### 環境変数
@@ -40,10 +41,9 @@ TUSD_DOWNLOAD_BASE_URL=http://localhost:8080/files/ uv run tusd-bridge
 | `TUSD_BRIDGE_HOST` | バインドアドレス | `0.0.0.0` |
 | `TUSD_BRIDGE_GRPC_PORT` | gRPC リッスンポート | `8000` |
 | `TUSD_BRIDGE_HTTP_PORT` | HTTP リッスンポート | `8001` |
-
-## Airflow 連携
-
-アップロード完了時に Airflow DAG を起動して後処理 (ファイル変換など) を実行する仕組みについては [AIRFLOW.md](AIRFLOW.md) を参照してください。
+| `AIRFLOW_BASE_URL` | Airflow REST API のベース URL (必須) | なし |
+| `AIRFLOW_AUTH_TOKEN` | Airflow API の認証トークン (Basic Auth, base64 エンコード済み, 必須) | なし |
+| `AIRFLOW_DAG_ID` | トリガーする DAG の ID | `file_post_processing` |
 
 ## HTTP APIによるデバッグ
 

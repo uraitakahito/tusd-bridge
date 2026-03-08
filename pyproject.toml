@@ -5,6 +5,7 @@ requires-python = ">=3.12"
 dependencies = [
     "alembic>=1.15",
     "grpclib[protobuf]>=0.4.7",
+    "httpx>=0.28",
     "sqlalchemy>=2.0",
     "starlette>=0.46",
     "typer>=0.24.1",

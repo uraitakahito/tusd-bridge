@@ -12,10 +12,14 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, StreamingResponse
 from starlette.routing import Route
 
+from tusd_bridge.airflow_client import AirflowClient
+from tusd_bridge.event_store import append_event
 from tusd_bridge.models import DomainEvent, FileListView
 from tusd_bridge.processing import trigger_processing
 
 POLLING_INTERVAL_SECONDS = 0.5
+
+VALID_PROCESSING_STATUSES = {"completed", "failed"}
 
 
 def view_to_dict(view: FileListView, tusd_download_base_url: str) -> dict[str, Any]:
@@ -142,6 +146,7 @@ def _create_sse_endpoint(
 def _create_rerun_endpoint(
     session_factory: sessionmaker[Session],
     tusd_download_base_url: str,
+    airflow_client: AirflowClient,
 ) -> Any:
     async def rerun(request: Request) -> JSONResponse:
         upload_id = request.path_params["upload_id"]
@@ -151,29 +156,56 @@ def _create_rerun_endpoint(
             if view is None:
                 return JSONResponse({"error": "upload not found"}, status_code=404)
             download_url = f"{tusd_download_base_url}/{upload_id}"
-            trigger_processing(session, upload_id, download_url)
+            trigger_processing(session, upload_id, download_url, airflow_client)
 
         return JSONResponse({"upload_id": upload_id, "status": "triggered"})
 
     return rerun
 
 
-# TODO: Airflow からの Webhook コールバックエンドポイント
-# POST /webhooks/processing-result
-# Airflow DAG の最終タスクがこのエンドポイントに処理結果を POST する。
-# リクエストボディ:
-#   {
-#     "upload_id": "...",
-#     "status": "completed" | "failed",
-#     "dag_run_id": "...",
-#     "outputs": [...]
-#   }
-# 受信時に processing.completed または processing.failed イベントを記録する。
+def _create_webhook_endpoint(
+    session_factory: sessionmaker[Session],
+) -> Any:
+    async def webhook_processing_result(request: Request) -> JSONResponse:
+        body: dict[str, Any] = await request.json()
+
+        upload_id = body.get("upload_id")
+        if not isinstance(upload_id, str) or not upload_id:
+            return JSONResponse({"error": "upload_id is required"}, status_code=400)
+
+        status = body.get("status")
+        if status not in VALID_PROCESSING_STATUSES:
+            return JSONResponse(
+                {
+                    "error": f"status must be one of: {', '.join(sorted(VALID_PROCESSING_STATUSES))}"
+                },
+                status_code=400,
+            )
+
+        with session_factory() as session:
+            view = session.get(FileListView, upload_id)
+            if view is None:
+                return JSONResponse({"error": "upload not found"}, status_code=404)
+
+            event_type = f"processing.{status}"
+            payload = json.dumps(body, ensure_ascii=False)
+            append_event(
+                session,
+                stream_id=upload_id,
+                stream_type="processing",
+                event_type=event_type,
+                payload=payload,
+            )
+
+        return JSONResponse({"upload_id": upload_id, "status": status})
+
+    return webhook_processing_result
 
 
 def create_http_app(
     session_factory: sessionmaker[Session],
     tusd_download_base_url: str,
+    airflow_client: AirflowClient,
 ) -> Starlette:
     """Create the Starlette application with file listing routes and SSE."""
     download_base_url = tusd_download_base_url.rstrip("/")
@@ -190,7 +222,12 @@ def create_http_app(
         ),
         Route(
             "/files/{upload_id}/rerun",
-            _create_rerun_endpoint(session_factory, download_base_url),
+            _create_rerun_endpoint(session_factory, download_base_url, airflow_client),
+            methods=["POST"],
+        ),
+        Route(
+            "/webhooks/processing-result",
+            _create_webhook_endpoint(session_factory),
             methods=["POST"],
         ),
     ]
