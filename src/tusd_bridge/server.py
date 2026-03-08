@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from tusd_bridge.database import get_engine
 from tusd_bridge.event_store import append_hook_event, update_upload_progress
 from tusd_bridge.http_app import create_http_app
+from tusd_bridge.processing import trigger_processing
 
 logging.basicConfig(
     level=logging.INFO,
@@ -25,8 +26,10 @@ class HookHandler(HookHandlerBase):
     def __init__(
         self,
         session_factory: sessionmaker[Session],
+        tusd_download_base_url: str,
     ) -> None:
         self._session_factory = session_factory
+        self._tusd_download_base_url = tusd_download_base_url
 
     async def InvokeHook(self, stream: Stream[HookRequest, HookResponse]) -> None:
         request = await stream.recv_message()
@@ -67,6 +70,9 @@ class HookHandler(HookHandlerBase):
                     event.event_id,
                     event.stream_id,
                 )
+                if request.type == "post-finish":
+                    download_url = f"{self._tusd_download_base_url}/{upload.id}"
+                    trigger_processing(session, upload.id, download_url)
 
         await stream.send_message(HookResponse())
 
@@ -77,7 +83,8 @@ async def _serve(
     engine = get_engine()
     session_factory = sessionmaker(bind=engine)
 
-    grpc_server = Server([HookHandler(session_factory)])
+    download_base_url = tusd_download_base_url.rstrip("/")
+    grpc_server = Server([HookHandler(session_factory, download_base_url)])
     await grpc_server.start(host, grpc_port)
     logger.info("gRPC Hook server listening on %s:%d", host, grpc_port)
 
