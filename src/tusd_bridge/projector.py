@@ -14,8 +14,11 @@ STATUS_PRIORITY: dict[str, int] = {
     "uploading": 2,
     "finishing": 3,
     "uploaded": 4,
-    "terminating": 5,
-    "terminated": 6,
+    "processing": 5,
+    "processed": 6,
+    "failed": 7,
+    "terminating": 8,
+    "terminated": 9,
 }
 
 EVENT_TYPE_TO_DISPLAY_STATUS: dict[str, str] = {
@@ -31,7 +34,13 @@ EVENT_TYPE_TO_DISPLAY_STATUS: dict[str, str] = {
     "hook.post-finish": "uploaded",
     "hook.pre-terminate": "terminating",
     "hook.post-terminate": "terminated",
+    "processing.triggered": "processing",
+    "processing.completed": "processed",
+    "processing.failed": "failed",
 }
+
+# ステータスを強制的に上書きするイベント種別
+FORCE_STATUS_EVENT_TYPES: set[str] = {"processing.triggered"}
 
 
 def _get_dict(data: dict[str, Any], key: str) -> dict[str, Any]:
@@ -132,7 +141,9 @@ def project_event(session: Session, event: DomainEvent) -> FileListView | None:
             view.last_event_id = event.event_id
             view.updated_at = now
     elif view is not None:
-        if _should_update_status(view.display_status, display_status):
+        if event.event_type in FORCE_STATUS_EVENT_TYPES:
+            view.display_status = display_status
+        elif _should_update_status(view.display_status, display_status):
             view.display_status = display_status
         view.last_event_id = event.event_id
         view.updated_at = now

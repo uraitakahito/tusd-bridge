@@ -13,6 +13,7 @@ from starlette.responses import JSONResponse, StreamingResponse
 from starlette.routing import Route
 
 from tusd_bridge.models import DomainEvent, FileListView
+from tusd_bridge.processing import trigger_processing
 
 POLLING_INTERVAL_SECONDS = 0.5
 
@@ -138,6 +139,38 @@ def _create_sse_endpoint(
     return sse_endpoint
 
 
+def _create_rerun_endpoint(
+    session_factory: sessionmaker[Session],
+    tusd_download_base_url: str,
+) -> Any:
+    async def rerun(request: Request) -> JSONResponse:
+        upload_id = request.path_params["upload_id"]
+
+        with session_factory() as session:
+            view = session.get(FileListView, upload_id)
+            if view is None:
+                return JSONResponse({"error": "upload not found"}, status_code=404)
+            download_url = f"{tusd_download_base_url}/{upload_id}"
+            trigger_processing(session, upload_id, download_url)
+
+        return JSONResponse({"upload_id": upload_id, "status": "triggered"})
+
+    return rerun
+
+
+# TODO: Airflow からの Webhook コールバックエンドポイント
+# POST /webhooks/processing-result
+# Airflow DAG の最終タスクがこのエンドポイントに処理結果を POST する。
+# リクエストボディ:
+#   {
+#     "upload_id": "...",
+#     "status": "completed" | "failed",
+#     "dag_run_id": "...",
+#     "outputs": [...]
+#   }
+# 受信時に processing.completed または processing.failed イベントを記録する。
+
+
 def create_http_app(
     session_factory: sessionmaker[Session],
     tusd_download_base_url: str,
@@ -154,6 +187,11 @@ def create_http_app(
             "/files/events",
             _create_sse_endpoint(session_factory, download_base_url),
             methods=["GET"],
+        ),
+        Route(
+            "/files/{upload_id}/rerun",
+            _create_rerun_endpoint(session_factory, download_base_url),
+            methods=["POST"],
         ),
     ]
     return Starlette(routes=routes)
